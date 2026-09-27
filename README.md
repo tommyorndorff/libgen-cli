@@ -6,6 +6,7 @@ quickly query the Library Genesis dataset and download any of its contents.
 ## Table of Contents
 - [Installation](#installation)
 - [Commands](#commands)
+	- [TUI](#tui)
 	- [Search](#search)
 	- [Download](#download)
 	- [Dbdumps](#dbdumps)
@@ -30,6 +31,18 @@ $ go install github.com/ciehanski/libgen-cli@latest
 ```
 
 ## Commands
+
+### TUI:
+
+The _tui_ command launches a full-screen, interactive terminal UI for
+searching and downloading resources without leaving a persistent screen.
+
+```bash
+$ libgen tui
+```
+
+Use ↑/↓ to navigate results, `enter` to search/select/download, `n` to start
+a new search, `esc` to go back, and `q`/`ctrl+c` to quit.
 
 ### Search:
 

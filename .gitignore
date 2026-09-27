@@ -1,7 +1,7 @@
 .idea
 /idea/
 /cmd/libgen-cli/libgen
-libgen-cli
+/libgen-cli
 /libgen/test
 /libgen/libgen
 /libgen/libgen.test

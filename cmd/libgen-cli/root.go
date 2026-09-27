@@ -25,7 +25,7 @@ import (
 	"github.com/ciehanski/libgen-cli/libgen"
 )
 
-var rootValidArgs = []string{"dbdumps", "download", "download-all", "link", "search", "status", "version"}
+var rootValidArgs = []string{"dbdumps", "download", "download-all", "link", "search", "status", "tui", "version"}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -48,6 +48,7 @@ func Execute() error {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(completionCmd)
+	rootCmd.AddCommand(tuiCmd)
 
 	if len(os.Args) < 2 {
 		if err := rootCmd.Help(); err != nil {

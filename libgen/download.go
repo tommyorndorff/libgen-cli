@@ -80,6 +80,68 @@ func DownloadBook(book *Book, outputPath string) error {
 	return nil
 }
 
+// DownloadBookProgress behaves like DownloadBook but reports progress via
+// onProgress(bytesRead, totalBytes) as the download proceeds, instead of
+// drawing a pb progress bar to stdout. It's used by the TUI, which owns its
+// own rendering loop and can't share stdout with pb.
+func DownloadBookProgress(book *Book, outputPath string, onProgress func(read, total int64)) error {
+	filename := getBookFilename(book)
+
+	req, err := http.NewRequest("GET", book.DownloadURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Accept-Encoding", "*")
+	client := http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}}
+	r, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to reach mirror %v: HTTP %v", req.Host, r.StatusCode)
+	}
+
+	out, err := makeFile(outputPath, filename)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, &progressReader{r: r.Body, total: r.ContentLength, onProgress: onProgress})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// progressReader wraps an io.Reader and invokes onProgress after every Read,
+// reporting cumulative bytes read against total (which may be unknown, i.e.
+// -1, if the server didn't send a Content-Length).
+type progressReader struct {
+	r          io.Reader
+	total      int64
+	read       int64
+	onProgress func(read, total int64)
+}
+
+func (p *progressReader) Read(buf []byte) (int, error) {
+	n, err := p.r.Read(buf)
+	if n > 0 {
+		p.read += int64(n)
+		if p.onProgress != nil {
+			p.onProgress(p.read, p.total)
+		}
+	}
+	return n, err
+}
+
 // GetDownloadURL picks a random download mirror to download the specified
 // resource from.
 func GetDownloadURL(book *Book, useIpfs bool) error {
