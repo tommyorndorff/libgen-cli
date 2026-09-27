@@ -20,9 +20,13 @@ import (
 )
 
 func TestDownloadIPFSBook(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
@@ -38,9 +42,13 @@ func TestDownloadIPFSBook(t *testing.T) {
 }
 
 func TestGetDownloadIPFSURL(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
@@ -56,9 +64,13 @@ func TestGetDownloadIPFSURL(t *testing.T) {
 }
 
 func TestGetLibraryLolIPFSURL(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {

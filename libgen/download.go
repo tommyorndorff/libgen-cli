@@ -83,6 +83,12 @@ func DownloadBook(book *Book, outputPath string) error {
 // GetDownloadURL picks a random download mirror to download the specified
 // resource from.
 func GetDownloadURL(book *Book, useIpfs bool) error {
+	// Books found via a libgen+ mirror are downloaded directly from that
+	// mirror (ads.php -> get.php), not via library.lol/libgen.pm.
+	if book.SourceMirror != "" && IsLibgenPlusMirror(book.SourceMirror) && !useIpfs {
+		return getLibgenPlusURL(book)
+	}
+
 	chosenMirror := DownloadMirrors[rand.Intn(len(DownloadMirrors))]
 
 	var x int
@@ -131,7 +137,10 @@ func GetDownloadURL(book *Book, useIpfs bool) error {
 // DownloadDbdump downloads the selected database dump from
 // Library Genesis.
 func DownloadDbdump(filename string, outputPath string) error {
-	mirror := GetWorkingMirror(DbdumpsMirrors)
+	mirror, err := GetWorkingMirror(DbdumpsMirrors)
+	if err != nil {
+		return err
+	}
 	client := http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,

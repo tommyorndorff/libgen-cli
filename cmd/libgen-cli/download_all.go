@@ -87,9 +87,15 @@ var downloadAllCmd = &cobra.Command{
 		searchQuery := strings.Join(args, " ")
 		fmt.Printf("++ Downloading all for: %s\n", searchQuery)
 
+		searchMirror, err := libgen.GetWorkingSearchMirror()
+		if err != nil {
+			fmt.Printf("error finding a working mirror: %v\n", err)
+			os.Exit(1)
+		}
+
 		books, err := libgen.Search(&libgen.SearchOptions{
 			Query:         searchQuery,
-			SearchMirror:  libgen.GetWorkingMirror(libgen.SearchMirrors),
+			SearchMirror:  searchMirror,
 			Results:       results,
 			RequireAuthor: requireAuthor,
 			Extension:     extension,

@@ -17,6 +17,7 @@ package libgen_cli
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
 
@@ -53,17 +54,29 @@ var linkCmd = &cobra.Command{
 
 		fmt.Printf("++ Retrieving download link for: %s\n", args[0])
 
-		searchMirror := libgen.GetWorkingMirror(libgen.SearchMirrors)
+		// GetDetails only understands the classic json.php API, so
+		// hash-based lookups are restricted to classic mirrors.
+		searchMirror, err := libgen.GetWorkingMirror(libgen.ClassicSearchMirrors)
+		if err != nil {
+			fmt.Printf("error finding a working mirror: %v\n", err)
+			os.Exit(1)
+		}
 		bookDetails, err := libgen.GetDetails(&libgen.GetDetailsOptions{
 			Hashes:       args,
 			SearchMirror: searchMirror,
 			Print:        false,
 		})
 		if err != nil {
-			// If error, try another mirror before exiting
-			secondaryMirror := libgen.GetWorkingMirror(libgen.SearchMirrors)
-			for secondaryMirror == searchMirror {
-				secondaryMirror = libgen.GetWorkingMirror(libgen.SearchMirrors)
+			// If error, try a different mirror before exiting.
+			var secondaryMirror url.URL
+			for attempt := 0; attempt < 5; attempt++ {
+				secondaryMirror, err = libgen.GetWorkingMirror(libgen.ClassicSearchMirrors)
+				if err != nil {
+					log.Fatalf("error finding a working mirror: %v", err)
+				}
+				if secondaryMirror != searchMirror {
+					break
+				}
 			}
 			bookDetails, err = libgen.GetDetails(&libgen.GetDetailsOptions{
 				Hashes:       args,

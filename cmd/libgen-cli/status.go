@@ -17,6 +17,7 @@ package libgen_cli
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 
@@ -50,98 +51,33 @@ var statusCmd = &cobra.Command{
 
 		switch mirror {
 		case "download":
-			for _, url := range libgen.DownloadMirrors {
-				status := libgen.CheckMirror(url)
-				if status == http.StatusOK {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.GreenString("[OK]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.GreenString("[OK]"), url.Host)
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.RedString("[FAIL]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.RedString("[FAIL]"), url.Host)
-					}
-				}
-			}
+			printMirrorStatuses(libgen.DownloadMirrors)
 		case "search":
-			for _, url := range libgen.SearchMirrors {
-				status := libgen.CheckMirror(url)
-				if status == http.StatusOK {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.GreenString("[OK]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.GreenString("[OK]"), url.Host)
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.RedString("[FAIL]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.RedString("[FAIL]"), url.Host)
-					}
-				}
-			}
+			printMirrorStatuses(libgen.SearchMirrors)
 		default:
-			for _, url := range libgen.SearchMirrors {
-				status := libgen.CheckMirror(url)
-				if status == http.StatusOK {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.GreenString("[OK]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.GreenString("[OK]"), url.Host)
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.RedString("[FAIL]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.RedString("[FAIL]"), url.Host)
-					}
-				}
-			}
-			for _, url := range libgen.DownloadMirrors {
-				status := libgen.CheckMirror(url)
-				if status == http.StatusOK {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.GreenString("[OK]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.GreenString("[OK]"), url.Host)
-					}
-				} else {
-					if runtime.GOOS == "windows" {
-						_, err := fmt.Fprintf(color.Output, "%s %s\n", color.RedString("[FAIL]"), url.Host)
-						if err != nil {
-							fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
-						}
-					} else {
-						fmt.Printf("%s %s\n", color.RedString("[FAIL]"), url.Host)
-					}
-				}
-			}
+			printMirrorStatuses(libgen.SearchMirrors)
+			printMirrorStatuses(libgen.DownloadMirrors)
 		}
 	},
+}
+
+// printMirrorStatuses checks and prints the [OK]/[FAIL] status of each
+// mirror in urls.
+func printMirrorStatuses(urls []url.URL) {
+	for _, u := range urls {
+		status := libgen.CheckMirror(u)
+		label := color.RedString("[FAIL]")
+		if status == http.StatusOK {
+			label = color.GreenString("[OK]")
+		}
+		if runtime.GOOS == "windows" {
+			if _, err := fmt.Fprintf(color.Output, "%s %s\n", label, u.Host); err != nil {
+				fmt.Printf("error writing to Windows os.Stdout: %v\n", err)
+			}
+		} else {
+			fmt.Printf("%s %s\n", label, u.Host)
+		}
+	}
 }
 
 func init() {

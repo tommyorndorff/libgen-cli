@@ -22,9 +22,13 @@ import (
 )
 
 func TestSearch(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	results, err := Search(&SearchOptions{
 		Query:        "test",
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Results:      1,
 	})
 	if err != nil {
@@ -36,13 +40,17 @@ func TestSearch(t *testing.T) {
 }
 
 func TestGetDetails(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	books, err := GetDetails(&GetDetailsOptions{
 		Hashes: []string{
 			"2F2DBA2A621B693BB95601C16ED680F8", // extension = gz
 			"06E6135019C8F2F43158ABA9ABDC610E", // extension = djvu
 			"553907CDF5F03AF78950561F42F1571A", // extension = pdf
 		},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 		Extension:    []string{"gz", "djvu"},
 	})
@@ -1230,7 +1238,10 @@ func TestParseHashes(t *testing.T) {
 
 func TestParseResponse(t *testing.T) {
 	// Test on 2F2DBA2A621B693BB95601C16ED680F8
-	searchMirror := GetWorkingMirror(SearchMirrors)
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	searchMirror.Path = "json.php"
 	q := searchMirror.Query()

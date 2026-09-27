@@ -53,7 +53,11 @@ var dbdumpsCmd = &cobra.Command{
 
 		fmt.Println("++ Retrieving all database dumps...")
 
-		mirror := libgen.GetWorkingMirror(libgen.DbdumpsMirrors)
+		mirror, err := libgen.GetWorkingMirror(libgen.DbdumpsMirrors)
+		if err != nil {
+			fmt.Printf("error finding a working mirror: %v\n", err)
+			os.Exit(1)
+		}
 
 		r, err := http.Get(mirror.String())
 		if err != nil {

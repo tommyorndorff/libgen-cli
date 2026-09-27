@@ -20,9 +20,13 @@ import (
 )
 
 func TestDownloadBook(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
@@ -38,9 +42,13 @@ func TestDownloadBook(t *testing.T) {
 }
 
 func TestGetDownloadURL(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
@@ -57,9 +65,13 @@ func TestGetDownloadURL(t *testing.T) {
 
 func TestLibgenPMDownloadURL(t *testing.T) {
 	t.Skipf("Skipping, does not pass in GitHub Actions")
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
@@ -79,9 +91,13 @@ func TestLibgenPMDownloadURL(t *testing.T) {
 }
 
 func TestGetLibraryLolURL(t *testing.T) {
+	searchMirror, err := GetWorkingMirror(ClassicSearchMirrors)
+	if err != nil {
+		t.Fatal(err)
+	}
 	book, err := GetDetails(&GetDetailsOptions{
 		Hashes:       []string{"1794743BB21D72736FFE64D66DCA9F0E"},
-		SearchMirror: GetWorkingMirror(SearchMirrors),
+		SearchMirror: searchMirror,
 		Print:        false,
 	})
 	if err != nil {
