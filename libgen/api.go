@@ -49,6 +49,11 @@ type Book struct {
 	CoverURL    string
 	DownloadURL string
 	PageURL     string
+	// SourceMirror is the hostname of the SearchMirror that produced this
+	// Book. It's used by GetDownloadURL to know whether a libgen+-dialect
+	// download lookup is needed instead of the classic library.lol/libgen.pm
+	// flow.
+	SourceMirror string
 }
 
 // SearchOptions are the optional parameters available for the Search
@@ -86,6 +91,13 @@ type GetDetailsOptions struct {
 // resulting http request to the parseHashes() function to extract the specific
 // hashes of matches found from the search query provided.
 func Search(options *SearchOptions) ([]*Book, error) {
+	// libgen+ mirrors (e.g. libgen.li) use a different search endpoint
+	// and result page layout than the classic libgen.rs-derived mirrors,
+	// so they get their own dedicated code path.
+	if IsLibgenPlusMirror(options.SearchMirror.Hostname()) {
+		return searchLibgenPlus(options)
+	}
+
 	// libgen search only allows query Results of 25, 50 or 100.
 	var res int
 	switch {
@@ -258,21 +270,50 @@ func CheckMirror(url url.URL) int {
 	return http.StatusOK
 }
 
-// GetWorkingMirror selects a random mirror from the []url.DownloadURL
-// provided and checks the mirror for a proper HTTP status code
-// for working order.
-func GetWorkingMirror(urls []url.URL) url.URL {
-	var mirror url.URL
+// maxMirrorAttempts bounds GetWorkingMirror's retry loop. Without a bound,
+// an entire mirror family going dark (as happened to the classic
+// libgen.is/.rs/.st/.gs mirrors) causes an infinite, silent retry loop.
+const maxMirrorAttempts = 20
 
-	for {
+// GetWorkingMirror selects a random mirror from the []url.URL provided and
+// checks it for a proper HTTP status code. It reports progress as it goes
+// and gives up after maxMirrorAttempts tries instead of retrying forever.
+func GetWorkingMirror(urls []url.URL) (url.URL, error) {
+	tried := make(map[string]bool)
+
+	for i := 0; i < maxMirrorAttempts; i++ {
 		randMirror := urls[rand.Intn(len(urls))]
+		host := randMirror.Hostname()
+		if tried[host] {
+			continue
+		}
+		tried[host] = true
+
+		fmt.Printf("++ checking mirror: %s ...", host)
 		if CheckMirror(randMirror) == http.StatusOK {
-			mirror = randMirror
+			fmt.Println(" OK")
+			return randMirror, nil
+		}
+		fmt.Println(" unreachable")
+
+		if len(tried) >= len(urls) {
+			// Every mirror in the pool has been tried at least once.
 			break
 		}
 	}
 
-	return mirror
+	return url.URL{}, fmt.Errorf("no working mirror found after checking %d/%d mirror(s)", len(tried), len(urls))
+}
+
+// GetWorkingSearchMirror returns a working search mirror, preferring the
+// libgen+ family (the one still online as of 2026) over the classic
+// libgen.rs-derived family, which is currently dead. It only falls back to
+// checking the classic mirrors if every libgen+ mirror is unreachable.
+func GetWorkingSearchMirror() (url.URL, error) {
+	if mirror, err := GetWorkingMirror(LibgenPlusSearchMirrors); err == nil {
+		return mirror, nil
+	}
+	return GetWorkingMirror(ClassicSearchMirrors)
 }
 
 // ParseDbdumps takes in a HTTP response and scans it for
@@ -371,14 +412,21 @@ func parseResponse(response []byte) (*Book, error) {
 	return &book, nil
 }
 
-func printDetails(book *Book) error {
-	var fsize string
-	size, err := strconv.Atoi(book.Filesize)
-	if err != nil {
-		fsize = "N/A"
-	} else {
-		fsize = humanize.Bytes(uint64(size))
+// FormatFilesize returns a human-readable file size for a Book's Filesize
+// field. Classic mirrors report Filesize as a raw byte count; libgen+
+// mirrors report it pre-formatted (e.g. "19 MB").
+func FormatFilesize(filesize string) string {
+	if size, err := strconv.Atoi(filesize); err == nil {
+		return humanize.Bytes(uint64(size))
 	}
+	if filesize != "" {
+		return filesize
+	}
+	return "N/A"
+}
+
+func printDetails(book *Book) error {
+	fsize := FormatFilesize(book.Filesize)
 
 	// Print separation lines
 	fmt.Println(strings.Repeat("-", 80))
@@ -386,6 +434,7 @@ func printDetails(book *Book) error {
 	// Print ID + Title
 	fTitle := fmt.Sprintf("%5s %s", color.New(color.FgHiBlue).Sprintf(book.ID), book.Title)
 	fTitle = formatTitle(fTitle, TitleMaxLength)
+	var err error
 	if runtime.GOOS == "windows" {
 		_, err = fmt.Fprintf(color.Output, "%s\n    ++ ", fTitle)
 		if err != nil {

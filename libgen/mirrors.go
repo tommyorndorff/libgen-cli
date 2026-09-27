@@ -16,9 +16,15 @@ package libgen
 
 import "net/url"
 
-// SearchMirrors contains all valid and tested mirrors used for
-// querying against Library Genesis.
-var SearchMirrors = []url.URL{
+// ClassicSearchMirrors contains the "classic" libgen.rs-derived mirrors.
+// As of 2026 this whole family is largely unreachable, but they're kept
+// here in case they come back online; GetWorkingMirror() will simply
+// skip past them in favor of a working "libgen+" mirror below.
+//
+// GetDetails (used by the `download <hash>`/`link <hash>` commands) only
+// understands the classic json.php API, so those commands deliberately
+// restrict mirror selection to this list rather than SearchMirrors.
+var ClassicSearchMirrors = []url.URL{
 	{
 		Scheme: "https",
 		Host:   "libgen.is",
@@ -55,6 +61,48 @@ var SearchMirrors = []url.URL{
 		Path:   "search.php",
 	},
 }
+
+// LibgenPlusSearchMirrors contains mirrors running the newer "libgen+"
+// codebase (originally libgen.li), which uses a different search endpoint
+// and result page layout than the classic mirrors above. As of 2026 this
+// is the family that's actually still online.
+var LibgenPlusSearchMirrors = []url.URL{
+	{
+		Scheme: "https",
+		Host:   "libgen.li",
+		Path:   "index.php",
+	},
+	{
+		Scheme: "https",
+		Host:   "libgen.gl",
+		Path:   "index.php",
+	},
+	{
+		Scheme: "https",
+		Host:   "libgen.la",
+		Path:   "index.php",
+	},
+	{
+		Scheme: "https",
+		Host:   "libgen.bz",
+		Path:   "index.php",
+	},
+	{
+		Scheme: "https",
+		Host:   "libgen.vg",
+		Path:   "index.php",
+	},
+}
+
+// SearchMirrors contains all known search mirrors, both libgen+ and
+// classic, for display purposes (e.g. `status`). Listed libgen+ first
+// since that's the family actually online as of 2026; Search()
+// dispatches to the right parsing logic based on which mirror was used.
+//
+// Actual mirror selection should go through GetWorkingSearchMirror(),
+// which prefers libgen+ and only falls back to the classic mirrors
+// below if every libgen+ mirror is unreachable.
+var SearchMirrors = append(append([]url.URL{}, LibgenPlusSearchMirrors...), ClassicSearchMirrors...)
 
 // DownloadMirrors contains all valid and tested mirrors used for
 // downloading content from Library Genesis.

@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/chzyer/readline"
-	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -94,7 +92,11 @@ var searchCmd = &cobra.Command{
 		fmt.Printf("++ Searching for: %s\n", searchQuery)
 
 		var books []*libgen.Book
-		var searchMirror = libgen.GetWorkingMirror(libgen.SearchMirrors)
+		searchMirror, err := libgen.GetWorkingSearchMirror()
+		if err != nil {
+			fmt.Printf("error finding a working mirror: %v\n", err)
+			os.Exit(1)
+		}
 		books, err = libgen.Search(&libgen.SearchOptions{
 			Query:         searchQuery,
 			SearchMirror:  searchMirror,
@@ -137,12 +139,7 @@ var searchCmd = &cobra.Command{
 				selectChoice += fmt.Sprintf("%s ", color.New(color.FgYellow).Sprintf("N/A"))
 			}
 			selectChoice += fmt.Sprintf("| %-4s ", color.New(color.FgRed).Sprintf(b.Extension))
-			size, err := strconv.Atoi(b.Filesize)
-			if err != nil {
-				fmt.Printf("error converting string to int: %v\n", err)
-				os.Exit(1)
-			}
-			selectChoice += fmt.Sprintf("| %v", color.New(color.FgGreen).Sprintf(humanize.Bytes(uint64(size))))
+			selectChoice += fmt.Sprintf("| %v", color.New(color.FgGreen).Sprintf(libgen.FormatFilesize(b.Filesize)))
 			bookSelection = append(bookSelection, selectChoice)
 		}
 

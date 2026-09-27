@@ -29,7 +29,16 @@ const (
 	TitleMaxLength      = 68
 	AuthorMaxLength     = 25
 	HTTPClientTimeout   = time.Second * 5
-	ipfsReg             = `/ipfs/([a-z0-9]+)`
+
+	// libgen+ (libgen.li-derived) mirror parsing. Unlike the classic
+	// mirrors, libgen+ has no per-book JSON API that includes title/author/
+	// etc., so results are parsed directly out of the search results table.
+	libgenPlusTableReg  = `(?s)id="tablelibgen">(.*?)</table>`
+	libgenPlusRowReg    = `(?s)<tr>(.*?)</tr>`
+	libgenPlusTitleReg  = `href="edition\.php\?id=\d+">([^<]+)`
+	libgenPlusFileIDReg = `file\.php\?id=(\d+)`
+	libgenPlusMd5Reg    = `ads\.php\?md5=([a-f0-9]{32})`
+	htmlTagReg          = `<[^>]+>`
 	//UploadUsername    = "genesis"
 	//UploadPassword    = "upload"
 	//libgenPwReg     = `http://libgen.pw/item/detail/id/\d*$`
