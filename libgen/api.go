@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
@@ -329,7 +330,29 @@ func ParseDbdumps(response []byte) []string {
 	return dbdumps
 }
 
+// getBodyMaxAttempts bounds getBody's automatic retry loop. Mirror sites are
+// frequently slow enough to blow through HTTPClientTimeout on a single try,
+// so a handful of quick retries clears most transient timeouts without
+// requiring the user to manually retry.
+const getBodyMaxAttempts = 3
+
 func getBody(baseURL string) ([]byte, error) {
+	var lastErr error
+	for attempt := 1; attempt <= getBodyMaxAttempts; attempt++ {
+		if attempt > 1 {
+			time.Sleep(time.Duration(attempt-1) * time.Second)
+		}
+		b, err := getBodyOnce(baseURL)
+		if err == nil {
+			return b, nil
+		}
+		lastErr = err
+		log.Printf("getBody(%q) attempt %d/%d failed: %v", baseURL, attempt, getBodyMaxAttempts, err)
+	}
+	return nil, fmt.Errorf("%w (after %d attempts)", lastErr, getBodyMaxAttempts)
+}
+
+func getBodyOnce(baseURL string) ([]byte, error) {
 	client := http.Client{
 		Timeout: HTTPClientTimeout,
 		Transport: &http.Transport{
@@ -338,7 +361,6 @@ func getBody(baseURL string) ([]byte, error) {
 		}}
 	r, err := client.Get(baseURL)
 	if err != nil {
-		log.Printf("http.Get(%q) error: %v", baseURL, err)
 		return nil, err
 	}
 	if r.StatusCode != http.StatusOK {

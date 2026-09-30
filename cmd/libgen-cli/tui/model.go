@@ -30,6 +30,16 @@ import (
 
 type state int
 
+// retryAction records which operation to redo when the user retries from
+// the error screen.
+type retryAction int
+
+const (
+	retryNone retryAction = iota
+	retrySearch
+	retryDownload
+)
+
 const (
 	stateInput state = iota
 	stateSearching
@@ -73,6 +83,12 @@ type model struct {
 
 	selectedBook *libgen.Book
 	progressCh   chan progressMsg
+
+	// lastQuery/lastAction remember what to redo when the user presses "r"
+	// on the error screen, so a transient network failure doesn't force a
+	// full new search.
+	lastQuery  string
+	lastAction retryAction
 
 	width  int
 	height int
@@ -211,6 +227,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.state = stateSearching
 			m.err = nil
+			m.lastQuery = query
+			m.lastAction = retrySearch
 			return m, tea.Batch(m.spinner.Tick, doSearch(query))
 		}
 		var cmd tea.Cmd
@@ -226,6 +244,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.selectedBook = m.books[cursor]
 			m.state = stateDownloading
+			m.lastAction = retryDownload
 			m.progressCh = make(chan progressMsg, 8)
 			_ = m.progress.SetPercent(0)
 			return m, tea.Batch(startDownload(m.selectedBook, m.outputPath, m.progressCh), m.listenForProgress())
@@ -237,12 +256,39 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case stateDone, stateError:
-		if msg.String() == "n" {
+		switch msg.String() {
+		case "n":
 			return m.resetToInput(), nil
+		case "r":
+			if m.state == stateError {
+				return m.retry()
+			}
 		}
 	}
 
 	return m, nil
+}
+
+// retry redoes whichever action last failed (search or download), used
+// when the user presses "r" on the error screen.
+func (m model) retry() (tea.Model, tea.Cmd) {
+	switch m.lastAction {
+	case retrySearch:
+		m.state = stateSearching
+		m.err = nil
+		return m, tea.Batch(m.spinner.Tick, doSearch(m.lastQuery))
+	case retryDownload:
+		if m.selectedBook == nil {
+			return m.resetToInput(), nil
+		}
+		m.state = stateDownloading
+		m.err = nil
+		m.progressCh = make(chan progressMsg, 8)
+		_ = m.progress.SetPercent(0)
+		return m, tea.Batch(startDownload(m.selectedBook, m.outputPath, m.progressCh), m.listenForProgress())
+	default:
+		return m.resetToInput(), nil
+	}
 }
 
 func (m model) resetToInput() model {
@@ -252,6 +298,7 @@ func (m model) resetToInput() model {
 	m.err = nil
 	m.books = nil
 	m.selectedBook = nil
+	m.lastAction = retryNone
 	return m
 }
 
@@ -402,7 +449,11 @@ func (m model) View() string {
 	case stateError:
 		b.WriteString(errorStyle.Render(fmt.Sprintf("Error: %v", m.err)))
 		b.WriteString("\n\n")
-		b.WriteString(helpStyle.Render("n new search · q quit"))
+		if m.lastAction != retryNone {
+			b.WriteString(helpStyle.Render("r retry · n new search · q quit"))
+		} else {
+			b.WriteString(helpStyle.Render("n new search · q quit"))
+		}
 	}
 
 	b.WriteString("\n")
