@@ -25,15 +25,34 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/cheggaaa/pb/v3"
 )
+
+// downloadMaxAttempts bounds automatic retries of a book download. There's
+// no partial-resume support, so each retry restarts the file from scratch.
+const downloadMaxAttempts = 3
 
 // DownloadBook grabs the download DownloadURL for the book requested.
 // First, it queries Booksdl.org and then b-ok.cc for valid DownloadURL.
 // Then, the download process is initiated with a progress bar displayed to
 // the user's CLI.
 func DownloadBook(book *Book, outputPath string) error {
+	var lastErr error
+	for attempt := 1; attempt <= downloadMaxAttempts; attempt++ {
+		if attempt > 1 {
+			fmt.Printf("retrying download (attempt %d/%d)...\n", attempt, downloadMaxAttempts)
+			time.Sleep(time.Duration(attempt-1) * 2 * time.Second)
+		}
+		if lastErr = downloadBookOnce(book, outputPath); lastErr == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w (after %d attempts)", lastErr, downloadMaxAttempts)
+}
+
+func downloadBookOnce(book *Book, outputPath string) error {
 	var filesize int64
 	filename := getBookFilename(book)
 
@@ -85,6 +104,19 @@ func DownloadBook(book *Book, outputPath string) error {
 // drawing a pb progress bar to stdout. It's used by the TUI, which owns its
 // own rendering loop and can't share stdout with pb.
 func DownloadBookProgress(book *Book, outputPath string, onProgress func(read, total int64)) error {
+	var lastErr error
+	for attempt := 1; attempt <= downloadMaxAttempts; attempt++ {
+		if attempt > 1 {
+			time.Sleep(time.Duration(attempt-1) * 2 * time.Second)
+		}
+		if lastErr = downloadBookProgressOnce(book, outputPath, onProgress); lastErr == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w (after %d attempts)", lastErr, downloadMaxAttempts)
+}
+
+func downloadBookProgressOnce(book *Book, outputPath string, onProgress func(read, total int64)) error {
 	filename := getBookFilename(book)
 
 	req, err := http.NewRequest("GET", book.DownloadURL, nil)
